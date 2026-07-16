@@ -36,7 +36,7 @@ public class ItemModelComponent extends ItemComponent {
                 } else {
                     finalItemModel = NamespacedKey.minecraft(s);
                 }
-            } catch (Exception _) {
+            } catch (Exception ignored) {
             }
 
             if (finalItemModel != null) {

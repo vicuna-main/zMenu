@@ -16,6 +16,7 @@ import org.bukkit.entity.Player;
 import org.jspecify.annotations.NonNull;
 
 import java.util.List;
+import java.util.function.Function;
 
 /**
  * Implementation of the {@link PlaceholderPermissible} interface that checks player permissions
@@ -62,13 +63,14 @@ public class ZPlaceholderPermissible extends PlaceholderPermissible {
 
         if (this.targetPlayer == null || this.targetPlayer.equalsIgnoreCase("null")) {
 
-            valueAsString = plugin.parse(player, placeholders.parse(this.placeholder));
-            resultAsString = plugin.parse(player, placeholders.parse(this.value));
+            valueAsString = plugin.parse(player, placeholders.parse(resolveNested(this.placeholder, string -> plugin.parse(player, string))));
+            resultAsString = plugin.parse(player, placeholders.parse(resolveNested(this.value, string -> plugin.parse(player, string))));
         } else {
 
             OfflinePlayer offlinePlayer = OfflinePlayerCache.get(plugin.parse(player, placeholders.parse(this.targetPlayer)));
-            valueAsString = plugin.parse(offlinePlayer.hasPlayedBefore() ? offlinePlayer : player, placeholders.parse(this.placeholder));
-            resultAsString = plugin.parse(offlinePlayer.hasPlayedBefore() ? offlinePlayer : player, placeholders.parse(this.value));
+            OfflinePlayer effectivePlayer = offlinePlayer.hasPlayedBefore() ? offlinePlayer : player;
+            valueAsString = plugin.parse(effectivePlayer, placeholders.parse(resolveNested(this.placeholder, string -> plugin.parse(effectivePlayer, string))));
+            resultAsString = plugin.parse(effectivePlayer, placeholders.parse(resolveNested(this.value, string -> plugin.parse(effectivePlayer, string))));
         }
 
         if (this.action.equals(PlaceholderAction.BOOLEAN)) {
@@ -121,6 +123,44 @@ public class ZPlaceholderPermissible extends PlaceholderPermissible {
             }
 
         }
+    }
+
+    /**
+     * Resolves nested PlaceholderAPI placeholders written with curly braces ({@code {...}}) before the
+     * outer {@code %...%} placeholders are parsed. This allows constructs such as
+     * {@code %multiverse-core_alias_{some_papi_world}%}, where the inner placeholder is evaluated first
+     * and its result is injected into the outer placeholder.
+     * <p>
+     * If an inner placeholder cannot be resolved (PlaceholderAPI returns it unchanged), the original
+     * {@code {...}} text is kept untouched, so this remains backward compatible with strings that
+     * legitimately contain curly braces (for example NBT-like content).
+     *
+     * @param input      the raw string that may contain {@code {...}} placeholders, may be {@code null}.
+     * @param papiParser the function used to resolve a single {@code %...%} placeholder.
+     * @return the string with resolvable inner placeholders replaced.
+     */
+    private static String resolveNested(String input, Function<String, String> papiParser) {
+        if (input == null || input.indexOf('{') < 0) return input;
+
+        StringBuilder builder = new StringBuilder(input.length());
+        int index = 0;
+        while (index < input.length()) {
+            char character = input.charAt(index);
+            if (character == '{') {
+                int end = input.indexOf('}', index);
+                if (end > index) {
+                    String placeholder = "%" + input.substring(index + 1, end) + "%";
+                    String resolved = papiParser.apply(placeholder);
+                    // Only substitute when PlaceholderAPI actually resolved the placeholder, otherwise keep the literal text.
+                    builder.append(resolved.equals(placeholder) ? input.substring(index, end + 1) : resolved);
+                    index = end + 1;
+                    continue;
+                }
+            }
+            builder.append(character);
+            index++;
+        }
+        return builder.toString();
     }
 
     /**

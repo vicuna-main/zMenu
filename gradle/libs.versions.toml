@@ -5,9 +5,9 @@ groupez = "1.0.0"
 paperweight = "2.0.0-beta.21"
 
 # Platforms (Paper / Spigot / NMS)
-spigot = "26.1-R0.1-SNAPSHOT"
+spigot = "1.21.11-R0.1-SNAPSHOT"
 paper-api = "1.21.11-R0.1-SNAPSHOT"
-paperDevBundle = "26.1.2.build.+"
+paperDevBundle = "1.21.11-R0.1-SNAPSHOT"
 paperDevBundle120R3 = "1.20.4-R0.1-SNAPSHOT"
 paperDevBundle120R4 = "1.20.6-R0.1-SNAPSHOT"
 paperDevBundle121R1 = "1.21.1-R0.1-SNAPSHOT"

@@ -6,6 +6,7 @@ import fr.maxlego08.menu.api.annotations.AutoListener;
 import fr.maxlego08.menu.common.utils.ZUtils;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
+import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.EntityPickupItemEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
@@ -39,14 +40,14 @@ public class AdapterListener extends ZUtils implements Listener {
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onInventoryClick(InventoryClickEvent event) {
         for (ListenerAdapter adapter : this.plugin.getListenerAdapters()) {
             adapter.onInventoryClick(event, (Player) event.getWhoClicked());
         }
     }
 
-    @EventHandler
+    @EventHandler(priority = EventPriority.LOWEST)
     public void onDrag(InventoryDragEvent event) {
         if (event.getWhoClicked() instanceof Player) {
             for (ListenerAdapter adapter : this.plugin.getListenerAdapters()) {

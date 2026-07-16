@@ -49,7 +49,7 @@ allprojects {
 
     java {
         toolchain {
-            languageVersion.set(JavaLanguageVersion.of(25))
+            languageVersion.set(JavaLanguageVersion.of(21))
         }
         withSourcesJar()
         if (project.name == "API") {
@@ -91,6 +91,7 @@ allprojects {
 
     tasks.compileJava {
         options.encoding = "UTF-8"
+        options.release.set(21)
     }
 
     if (project.name == "API") {

@@ -24,6 +24,7 @@ import fr.maxlego08.menu.api.utils.*;
 import fr.maxlego08.menu.api.utils.version.VersionFilter;
 import fr.maxlego08.menu.button.buttons.ZNoneButton;
 import fr.maxlego08.menu.button.loader.*;
+import fr.maxlego08.menu.listener.InputManager;
 import fr.maxlego08.menu.command.validators.*;
 import fr.maxlego08.menu.common.utils.PlayerUtil;
 import fr.maxlego08.menu.common.utils.ZUtils;
@@ -58,6 +59,7 @@ import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.inventory.ClickType;
+import org.bukkit.event.inventory.InventoryType;
 import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.inventory.InventoryHolder;
@@ -341,19 +343,44 @@ public class ZInventoryManager extends ZUtils implements InventoryManager {
 
     @Override
     public void openInventory(Player player, Inventory inventory, int page, List<Inventory> oldInventories) {
+        this.openInventory(player, inventory, page, oldInventories, true, true);
+    }
 
-        PlayerOpenInventoryEvent playerOpenInventoryEvent = new PlayerOpenInventoryEvent(player, inventory, page, oldInventories);
-        if (Configuration.enableFastEvent) {
-            this.getFastEvents().forEach(event -> event.onPlayerOpenInventory(playerOpenInventoryEvent));
-        } else playerOpenInventoryEvent.call();
+    private void openInventory(Player player, Inventory inventory, int page, List<Inventory> oldInventories, boolean closeExternalInventory, boolean callEvent) {
 
-        if (playerOpenInventoryEvent.isCancelled()) return;
+        if (callEvent) {
+            PlayerOpenInventoryEvent playerOpenInventoryEvent = new PlayerOpenInventoryEvent(player, inventory, page, oldInventories);
+            if (Configuration.enableFastEvent) {
+                this.getFastEvents().forEach(event -> event.onPlayerOpenInventory(playerOpenInventoryEvent));
+            } else playerOpenInventoryEvent.call();
 
-        page = playerOpenInventoryEvent.getPage();
-        oldInventories = playerOpenInventoryEvent.getOldInventories();
+            if (playerOpenInventoryEvent.isCancelled()) return;
+
+            page = playerOpenInventoryEvent.getPage();
+            oldInventories = playerOpenInventoryEvent.getOldInventories();
+        }
+
+        if (closeExternalInventory && this.shouldCloseExternalInventory(player)) {
+            int finalPage = page;
+            List<Inventory> finalOldInventories = oldInventories;
+            player.closeInventory();
+            this.plugin.getScheduler().runAtEntityLater(player, () -> this.openInventory(player, inventory, finalPage, finalOldInventories, false, false), 1);
+            return;
+        }
 
         this.currentInventories.put(player.getUniqueId(), inventory);
         this.createInventory(this.plugin, player, EnumInventory.INVENTORY_DEFAULT, page, inventory, oldInventories);
+    }
+
+    private boolean shouldCloseExternalInventory(Player player) {
+        var topInventory = CompatibilityUtil.getTopInventory(player);
+        if (topInventory == null) {
+            return false;
+        }
+        if (topInventory.getType() == InventoryType.CRAFTING || topInventory.getType() == InventoryType.PLAYER) {
+            return false;
+        }
+        return !(topInventory.getHolder() instanceof InventoryDefault);
     }
 
     @Override
@@ -425,6 +452,11 @@ public class ZInventoryManager extends ZUtils implements InventoryManager {
         buttonManager.register(new PaginationNextButtonLoader(this.plugin));
         buttonManager.register(new PaginationPreviousButtonLoader(this.plugin));
         buttonManager.register(new ItemDragLoader(this.plugin));
+
+        // Loading Button Input (chat capture)
+        InputManager inputManager = new InputManager(this.plugin);
+        this.plugin.addListener(inputManager);
+        buttonManager.register(new InputLoader(this.plugin, inputManager));
 
         // Loading Button Dialog
         // Register Button Dialog Body
